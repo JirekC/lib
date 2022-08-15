@@ -151,11 +151,11 @@ void scanner::Prepare(field &_f, vec3<uint32_t> position, vec3<double> rotation,
 
     try {
         // allocate memory for scanned data on device
-        buff_data = std::move(cl::Buffer(f->d->cl_context, CL_MEM_WRITE_ONLY, sizeof(data_t) * num_elements));
-        buff_elements = std::move(cl::Buffer(f->d->cl_context, CL_MEM_READ_ONLY, sizeof(uint32_t) * num_elements * 3));
+        buff_data = std::move(cl::Buffer(f->d->cl_context, CL_MEM_READ_WRITE/*CL_MEM_WRITE_ONLY*/, sizeof(data_t) * num_elements));
+        buff_elements = std::move(cl::Buffer(f->d->cl_context, CL_MEM_READ_WRITE/*CL_MEM_READ_ONLY*/, sizeof(uint32_t) * num_elements * 3));
 
         //calc & store coordinates
-        data_t *tmp_elements = static_cast<data_t*>(f->cl_queue.enqueueMapBuffer(buff_elements, CL_TRUE, CL_MAP_WRITE, 0, sizeof(uint32_t) * 3 * num_elements));
+        uint32_t *tmp_elements = static_cast<uint32_t*>(f->cl_queue.enqueueMapBuffer(buff_elements, CL_TRUE, CL_MAP_WRITE, 0, sizeof(uint32_t) * 3 * num_elements));
         mat3_3 rot = RotationMatrix<data_t>(rotation);
         for(uint32_t y = 0; y < size.y; y++)
         {
@@ -181,10 +181,18 @@ void scanner::Prepare(field &_f, vec3<uint32_t> position, vec3<double> rotation,
         f->cl_queue.enqueueUnmapMemObject(buff_elements, tmp_elements);
     }
     catch (cl::Error& e) {
-        throw std::runtime_error("ERR: Can't allocate memory on device (fas::scanner::CollectElements()):\n" + std::string(e.what()));
+        throw std::runtime_error("ERR: Can't allocate memory on device (fas::scanner::Prepare()):\n" + std::string(e.what()));
     }
-    out_file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-    out_file.open(out_file_name, std::ios::binary | std::ios::trunc); // sdt::exception will go higher, if thrown
+    // output file
+    try {
+        out_file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+        out_file.open(out_file_name, std::ios::binary | std::ios::trunc); // sdt::exception will go higher, if thrown
+    }
+    catch (std::exception& e)
+    {
+        throw std::runtime_error("ERR: Can't write to file \"" + out_file_name + "\" (fas::scanner::Prepare()):\n" + std::string(e.what()));
+    }
+
 }
 
 void scanner::Scan2devmem()
@@ -203,7 +211,6 @@ void scanner::Scan2devmem()
         f->d->scan_kernel.setArg(3, f->size.x);
         f->d->scan_kernel.setArg(4, f->size.y);
         f->cl_queue.enqueueNDRangeKernel(f->d->scan_kernel, 0, num_elements);
-        //f->cl_queue.finish(); // wait for device
     }
     catch (cl::Error& e) {
         std::string s;
@@ -223,12 +230,12 @@ void scanner::Scan2file() {
         hptr = f->cl_queue.enqueueMapBuffer(buff_data, CL_TRUE, CL_MAP_READ, 0, sizeof(data_t) * num_elements);
         out_file.write((char*)hptr, sizeof(data_t) * num_elements);
         f->cl_queue.enqueueUnmapMemObject(buff_data, hptr);
-        //f->cl_queue.enqueueBarrierWithWaitList(); // for unmap ( ?? )
+        f->cl_queue.enqueueBarrierWithWaitList(); // for unmap ( ?? )
     }
     catch (cl::Error& e) {
         f->cl_queue.enqueueUnmapMemObject(buff_data, hptr); // in case of file IO error
         std::string s;
-        s = "ERR: Can't read data from device. (fas::scanner::Scan2hostmem()):\n";
+        s = "ERR: Can't read data from device to file. (fas::scanner::Scan2file()):\n";
         s += e.what();
         throw std::runtime_error(s);
     }

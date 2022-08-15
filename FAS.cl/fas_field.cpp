@@ -107,8 +107,7 @@ void field::SimStep() {
         d->sim_step_kernel.setArg(5, dx);
         d->sim_step_kernel.setArg(6, dt);
         cl::Event e;
-        //Finish(); ///< \todo Finish() is not needed here, use "cl_queue.enqueueBarrierWithWaitList();" instead ... // wait for all previous work
-        cl_queue.enqueueBarrierWithWaitList();
+        cl_queue.enqueueBarrierWithWaitList(); // wait for all previous work
         cl_queue.enqueueNDRangeKernel(d->sim_step_kernel, { 0,0,0 }, { size.x, size.y, size.z }, cl::NullRange, NULL, &e);
         // diagnostic only, comment if not used:
         /*Finish(); // global finish for all works
