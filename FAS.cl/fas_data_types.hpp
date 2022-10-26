@@ -167,7 +167,7 @@ namespace fas {
 		data_t * rms_mapped_ptr = nullptr;
 		bool calc_rms = false; ///< true: there is requirement for calculating RMS value; false: no RMS calculation, \ref buff_rms not allocated
 
-		std::vector<material> materials; ///< used materials, need to be initialised (calculated \b k & \b m ) before simulation, see \ref material::Recalc()
+		std::vector<material> materials; ///< used materials, need to be initialised before simulation, see \ref material::Recalc()
 		std::vector<data_t> rms_window; ///< window used for "integrating": rect, Hann, Hamming ... One element of vector coresponding to one step of simulation
 		//uint8_t symmetry = 0; ///< 0 by default (asymmetric field) else: see \ref FasFieldSetSymmetry() & \ref FAS_DIRECTION_ (please use only directions with "p" suffix)
 
@@ -212,6 +212,7 @@ namespace fas {
 		static void CreateBox(field& f, vec3<uint32_t> pos, vec3<double> rot, vec3<uint32_t> size, uint8_t material);
 		static void CreateCylinder(field& f, vec3<uint32_t> pos, vec3<double> rot, vec3<uint32_t> size, uint8_t material); // size.y = base.radius_a, size.y = base.radius_b, size.z = height
 		static void CreateEllipsoid(field& f, vec3<uint32_t> pos, vec3<double> rot, vec3<uint32_t> size, uint8_t material);
+		static void LoadVoxelMap(field& f, const char *path);
 	};
 
 	/** \brief Parent struct of driver and scanner (pressure "microphone" array) - colection of elements */
@@ -245,8 +246,9 @@ namespace fas {
 	};
 
 	/**
-	 * \brief Scanner - scans acoustic pressure in each element and store it to out_file
-	 * \note For best performance use only rotation around X coordinate (if possible).
+	 * \brief 	Scanner - scans acoustic pressure in each element and store it to out_file.
+	 * 			Scanner is always rectangular plane with edges of size.x * size.y. Can be rotaded around bottom-left corner (x=0; y=0).
+	 * \note 	For best performance use only rotation around X coordinate (if possible).
 	 * 
 	 */
 	struct scanner {
@@ -278,26 +280,6 @@ namespace fas {
 		 */
 		void Scan2file();
 	};
-
-	/** \brief Scanner - scans acoustic pressure in each element and store it to host's memory array */
-	// struct scanner : transducer {
-	// 	data_t* data = nullptr; ///< pressure in each element of transducer (host-side), ordes is same as elements order - see \ref transducer::GetElementsCoords()
-	// 	cl::Buffer buff_data; ///< pressure in each element of transducer (device-side)
-
-	// 	scanner() {};
-	// 	scanner(field& f) : transducer(f) {}
-	// 	~scanner() { if (data != nullptr) delete[] data; }
-
-	// 	void CollectElements(); ///< Store coordinates of scanner's elements and allocates memory on host (data) and device (buff_data), see \ref transducer::CollectElements()
-		
-	// 	/** \brief Scans pressure of elements into buffer on device
-	// 	 *
-	// 	 * Coordinates of elements must be already initialized by \ref CollectElements()
-	// 	 * Non blocking, all scanners can be launched simultaneously, but before continue to next step (\ref Scan2hostmem()), \b f->Finish() must be called
-	// 	 **/
-	// 	void Scan2devmem();
-	// 	void Scan2hostmem(); ///< copy data from device to host - call it after \ref Scan2devmem()
-	// };
 
 };
 

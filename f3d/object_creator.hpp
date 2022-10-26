@@ -21,7 +21,7 @@ namespace f3d {
          * 
          * @param path              input file
          * @param model_max_dim*    updates maximal size of model in each dimmension (positive only)
-         * @return object_3d_vi*    3D model
+         * @return object_3d_vi*    Pointer to newly created 3D model, caller must deallocate memory!
          */
         object_3d_vi* LoadSTL(const char* path, glm::vec3* model_max_dim = nullptr);
 
@@ -61,7 +61,7 @@ namespace f3d {
         /**
          * @brief Loads model's data to GPU
          * 
-         * @param model 
+         * @param model         pointer to 3D model, will be deallocated here after copy to GPU
          * @param translation 
          * @param rotation 
          * @param scale 

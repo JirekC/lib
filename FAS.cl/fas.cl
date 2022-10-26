@@ -231,11 +231,11 @@ kernel void object_box (	global uchar * mat_arr, // field.buff_mat
 // run this kernel in 2D range { 4 * base.radius.a, 4 * base.radius.b }
 // draw filled elliptical cylinder into 3D array - sets coresponding elements of mat_arr to material
 kernel void object_cylinder (	global uchar * mat_arr, // field.buff_mat
-							constant float * rot_pos, // position and rotation: elements [0..8] rotation matrix, [9..11] position
-							uint x_size, uint y_size, uint z_size, // size of acoustic FIELD (mat_arr array)
-							uchar material, // material of object
-							uint two_height // 2 * height of cylinder
-							) {
+								constant float * rot_pos, // position and rotation: elements [0..8] rotation matrix, [9..11] position
+								uint x_size, uint y_size, uint z_size, // size of acoustic FIELD (mat_arr array)
+								uchar material, // material of object
+								uint two_height // 2 * height of cylinder
+								) {
 
 	float radius_a = 0.25f * get_global_size(0);
 	float radius_b = 0.25f * get_global_size(1);
@@ -274,10 +274,10 @@ kernel void object_cylinder (	global uchar * mat_arr, // field.buff_mat
 // run this kernel in 3D range { 4 * ellipsoid.radius.a, 4 * ellipsoid.radius.b, 4 * ellipsoid.radius.c }
 // draw filled ellipsoid into 3D array - sets coresponding elements of mat_arr to material
 kernel void object_ellipsoid (	global uchar * mat_arr, // field.buff_mat
-							constant float * rot_pos, // position and rotation: elements [0..8] rotation matrix, [9..11] position
-							uint x_size, uint y_size, uint z_size, // size of acoustic FIELD (mat_arr array)
-							uchar material // material of object
-							) {
+								constant float * rot_pos, // position and rotation: elements [0..8] rotation matrix, [9..11] position
+								uint x_size, uint y_size, uint z_size, // size of acoustic FIELD (mat_arr array)
+								uchar material // material of object
+								) {
 
 	float radius_a = 0.25f * get_global_size(0);
 	float radius_b = 0.25f * get_global_size(1);
@@ -339,11 +339,11 @@ kernel void tdcr_count_elements (	global const uchar * mat_arr, // field.buff_ma
 // run this kernel in 2D range { field.size.y, field.size.z }
 // store coordinates of transducer's elements (with MSB set) in each line along the x-axis
 kernel void tdcr_collect_elements (	global const uchar * mat_arr, // field.buff_mat array with MSBs set in transducer's elements
-										global const ulong * psum, // output of prefix sum kernels { field.size.y, filed.size.z }
-										global uint * elements, // array of element's coordinates, format: { x0, x1 ... xn, y1 .. yn, z1 .. zn } - output of kernel
-										uint x_size, // field.size.x [elements]
-										ulong no_elements // total number of transducer's elements ( = psum[last])
-										) {
+									global const ulong * psum, // output of prefix sum kernels { field.size.y, filed.size.z }
+									global uint * elements, // array of element's coordinates, format: { x0, x1 ... xn, y1 .. yn, z1 .. zn } - output of kernel
+									uint x_size, // field.size.x [elements]
+									ulong no_elements // total number of transducer's elements ( = psum[last])
+									) {
 	size_t my_y = get_global_id(0);
 	size_t my_z = get_global_id(1);
 	size_t y_size = get_global_size(0);

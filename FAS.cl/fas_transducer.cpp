@@ -125,24 +125,6 @@ void driver::Drive(data_t signal) {
     }
 }
 
-// void scanner::CollectElements() {
-//     transducer::CollectElements();
-//     if (data != nullptr) delete[] data;
-//     // alloc memory for scanned data (host)
-//     data = new data_t[num_elements];
-//     // alloc memory for scanned data (device)
-//     try {
-//         buff_data = std::move(cl::Buffer(f->d->cl_context, CL_MEM_READ_WRITE, sizeof(data_t) * num_elements));
-//     }
-//     catch (cl::Error& e) {
-//         // "data" will be deallocated in this->destructor
-//         std::string s;
-//         s = "ERR: Can't allocate memory on device (fas::scanner::CollectElements()):\n";
-//         s += e.what();
-//         throw std::runtime_error(s);
-//     }
-// }
-
 void scanner::Prepare(field &_f, vec3<uint32_t> position, vec3<double> rotation, vec2<uint32_t> size, std::string out_file_name, uint32_t _store_every_nth_frame)
 {
     f = &_f;
