@@ -104,17 +104,18 @@ void field::SimStep() {
         d->sim_step_kernel.setArg(2, buff_mat);
         d->sim_step_kernel.setArg(3, buff_r);
         d->sim_step_kernel.setArg(4, buff_c);
-        d->sim_step_kernel.setArg(5, dx);
-        d->sim_step_kernel.setArg(6, dt);
+        d->sim_step_kernel.setArg(5, size.z);
+        d->sim_step_kernel.setArg(6, dx);
+        d->sim_step_kernel.setArg(7, dt);
         cl::Event e;
         cl_queue.enqueueBarrierWithWaitList(); // wait for all previous work
-        cl_queue.enqueueNDRangeKernel(d->sim_step_kernel, { 0,0,0 }, { size.x, size.y, size.z }, cl::NullRange, NULL, &e);
+        cl_queue.enqueueNDRangeKernel(d->sim_step_kernel, { 0,0 }, { size.x, size.y }, cl::NullRange, NULL, &e);
         // diagnostic only, comment if not used:
-        /*Finish(); // global finish for all works
+        Finish(); // global finish for all works
         uint64_t start, end;
         e.getProfilingInfo(CL_PROFILING_COMMAND_START, &start);
         e.getProfilingInfo(CL_PROFILING_COMMAND_END, &end);
-        printf("   elapsed time [ns]: %lli", (end - start));*/
+        printf("   elapsed time [ns]: %lli", (end - start));
     }
     catch (cl::Error& e) {
         std::string s;

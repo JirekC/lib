@@ -102,6 +102,10 @@ int f3d::scanner::load_frame(uint32_t frame)
 			size_t position = sizeof(float) * _size.x * _size.y * frame;
 			data_file.seekg(position, data_file.beg);
 			data_file.read((char*)values.data(), sizeof(float) * values.size()); // read actual frame
+            // OpenGL saturates textures to <0 .. 1> so ve need to fit values into this interval
+            for(size_t i = 0; i < values.size(); i++) {
+                values[i] = (values[i] + 1.0f) * 0.5f;
+            }
             // update texture - glTexSubImage2D() is faster than creating new texture by glTexImage2D()
             glBindTexture(GL_TEXTURE_2D, texture);     
             glTexSubImage2D(

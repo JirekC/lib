@@ -27,12 +27,26 @@ namespace fas {
 	template<typename T = data_t>
 	struct vec2 {
 		T x, y;
+		
+		vec2<T>() {}
+		template<typename U> vec2<T>(U _x, U _y) { x=_x; y=_y; }
+		template<typename U> vec2<T>(vec2<U> inp) { x=inp.x; y=inp.y; }
+		template<typename U> vec2<T> operator* (U scalar) {
+			return {x * scalar, y * scalar};
+		}
 	};
 
 	/** \brief 3D vector */
 	template<typename T = data_t>
 	struct vec3 {
 		T x, y, z;
+
+		vec3<T>() {}
+		template<typename U> vec3<T>(U _x, U _y, U _z) { x=_x; y=_y; z=_z; }
+		template<typename U> vec3<T>(vec3<U> inp) { x=inp.x; y=inp.y; z=inp.z; }
+		template<typename U> vec3<T> operator* (U scalar) {
+			return {x * scalar, y * scalar, z * scalar};
+		}
 	};
 
 	/** \brief 3x3 matrix */
@@ -227,7 +241,7 @@ namespace fas {
 			this->f = &f;
 		}
 
-		void CollectElements(); ///< Store coordinates of transducer's elements - elements with MSB of material-attribute set; use \ref fas::object with \b material 0x80 and above to create driver shape and than call this fnc
+		void CollectElements(uint8_t my_idx); ///< Store coordinates of transducer's elements - elements with material number == my_idx
 		std::vector<uint32_t> GetElementsCoords(); ///< Return vector of coordinates of transducer's elements, format: uint32 { x0, x1 ... xn, y1 .. yn, z1 .. zn }
 	};
 

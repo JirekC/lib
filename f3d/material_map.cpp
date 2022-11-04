@@ -159,7 +159,7 @@ void f3d::material_map::Prepare(glm::u32vec3 scene_size, const char* path, glm::
 						positions.push_back((float)x);
 						positions.push_back((float)y);
 						positions.push_back((float)z);
-						materials.push_back((float)material / 256.0f);
+						materials.push_back((float)material);
 						nr_of_instances++;
 					}
 				}

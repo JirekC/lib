@@ -22,73 +22,79 @@ kernel void clear ( global float * pressure, global float * pressure_tm1, global
 		rms_sum[my_idx] = 0.0f;
 }
 
-// run this kernel in 3D range { field.size.x, field.size.y, field.size.z }
-kernel void sim_step (	global const float * p_t, // field.A/B (see C++ source)
+// run this kernel in 3D range { field.size.x, field.size.y }
+kernel void sim_step (	global float * p_t, // field.A/B (see C++ source)
 						global float * p_tm1, // field.A/B (see C++ soucre)
 						global const uchar * material, // field.buff_mat
 						constant float * r, // arrays[256] of material properties
 						constant float * c, // ...
+						uint z_size,
 						// TODO: use k = dt*dt/(dx*dx) instead of following two params
 						float dx, // edge of cubic elements [m]
 						float dt // time step [s]
 						) {
 
-	size_t x_size = get_global_size(0);
-	size_t y_size = get_global_size(1);
-	size_t z_size = get_global_size(2);
+	uint x_size = get_global_size(0);
+	uint y_size = get_global_size(1);
 
-	size_t my_z = get_global_id(2);
-	size_t my_y = get_global_id(1);
-	size_t my_x = get_global_id(0);
+	uint my_x = get_global_id(0);
+	uint my_y = get_global_id(1);
 
-	// don't calc boundaries 
-	// TODO: pevne okrajove podminky -> nesmysl, potřeba použít volné -> ideální odraz od pevné překážky ( pravda ?? -> nutno konzultovat )
-	if (my_z > 0 && my_z < z_size - 1 && \
-		my_y > 0 && my_y < y_size - 1 && \
-		my_x > 0 && my_x < x_size - 1)
-	{
+	// layer 0 - copy pressure from layer 1
+	p_t[INDEX3D(my_x, my_y, 1)] = p_t[INDEX2D(my_x, my_y)];
 
-		size_t my_idx = INDEX3D(my_x, my_y, my_z);
-		float my_r = r[material[my_idx]]; // characteristic acoustic impedance of my element
-		float my_c = c[material[my_idx]]; // my speed of sound
-		float my_p = p_t[my_idx]; // actual pressure of my element
+	// last layer - copy from pre-last layer
+	p_t[INDEX3D(my_x, my_y, z_size - 1)] = p_t[INDEX3D(my_x, my_y, z_size - 2)];
 
-		// characteristic acoustic impedance of adjacent elements
-		float xp1_r = r[material[my_idx + 1]];
-		float xm1_r = r[material[my_idx - 1]];
-		float yp1_r = r[material[my_idx + x_size]];
-		float ym1_r = r[material[my_idx - x_size]];
-		float zp1_r = r[material[my_idx + x_size * y_size]];
-		float zm1_r = r[material[my_idx - x_size * y_size]];
+	// all other layers
+	// skip y == 0 and y == y_size - 1
+	if(my_y > 0 && my_y < y_size - 1) {
+		for(uint my_z = 1; my_z < z_size - 2; my_z++) {
+			// skip x boundaries
+			if(my_x > 0 && my_x < x_size - 1) {
+				size_t my_idx = INDEX3D(my_x, my_y, my_z);
+				float my_r = r[material[my_idx]]; // characteristic acoustic impedance of my element
+				float my_c = c[material[my_idx]]; // my speed of sound
+				float my_p = p_t[my_idx]; // actual pressure of my element
 
-		// actual pressure in adjacent elements
-		float xp1_p = p_t[my_idx + 1];
-		float xm1_p = p_t[my_idx - 1];
-		float yp1_p = p_t[my_idx + x_size];
-		float ym1_p = p_t[my_idx - x_size];
-		float zp1_p = p_t[my_idx + x_size * y_size];
-		float zm1_p = p_t[my_idx - x_size * y_size];
+				// characteristic acoustic impedance of adjacent elements
+				float xp1_r = r[material[my_idx + 1]];
+				float xm1_r = r[material[my_idx - 1]];
+				float yp1_r = r[material[my_idx + x_size]];
+				float ym1_r = r[material[my_idx - x_size]];
+				float zp1_r = r[material[my_idx + x_size * y_size]];
+				float zm1_r = r[material[my_idx - x_size * y_size]];
 
-		float acc;
-		// calc influence of neighboring elements:
-		// transmission wave from neighboring elements ( Tcoef = 2*r_my / (r_my + r_neigh) )
-		acc =  2.0f * my_r / (my_r + xp1_r) * xp1_p; // "* 2.0f" can be moved to wave eq bellow
-		acc += 2.0f * my_r / (my_r + yp1_r) * yp1_p;
-		acc += 2.0f * my_r / (my_r + zp1_r) * zp1_p;
-		acc += 2.0f * my_r / (my_r + xm1_r) * xm1_p;
-		acc += 2.0f * my_r / (my_r + ym1_r) * ym1_p;
-		acc += 2.0f * my_r / (my_r + zm1_r) * zm1_p;
-		
-		// myself influence - reflected wave from boundary (0 if same material: r_my = r_neigh)
-		acc += (xp1_r - my_r) / (xp1_r + my_r) * my_p;
-		acc += (yp1_r - my_r) / (yp1_r + my_r) * my_p;
-		acc += (zp1_r - my_r) / (zp1_r + my_r) * my_p;
-		acc += (xm1_r - my_r) / (xm1_r + my_r) * my_p;
-		acc += (ym1_r - my_r) / (ym1_r + my_r) * my_p;
-		acc += (zm1_r - my_r) / (zm1_r + my_r) * my_p;
+				// actual pressure in adjacent elements
+				float xp1_p = my_x == x_size - 2 ? my_p : p_t[my_idx + 1]; // virtual "copy" of boundary elements
+				float xm1_p = my_x == 1 ? my_p : p_t[my_idx - 1];
+				float yp1_p = my_y == y_size - 2 ? my_p : p_t[my_idx + x_size];
+				float ym1_p = my_y == 1 ? my_p : p_t[my_idx - x_size];
+				float zp1_p = p_t[my_idx + x_size * y_size];
+				float zm1_p = p_t[my_idx - x_size * y_size];
 
-		// from now, for this element, p_tm1 will be p(t + 1); after finish of this simulation-step, buffers will be swapped by host code
-		p_tm1[my_idx] = dt * dt * my_c * my_c / (dx * dx) * (acc - 6.0f * my_p) + 2.0f * my_p - p_tm1[my_idx];
+				float acc;
+				// calc influence of neighboring elements:
+				// transmission wave from neighboring elements ( Tcoef = 2*r_my / (r_my + r_neigh) )
+				acc =  2.0f * my_r / (my_r + xp1_r) * xp1_p; // "* 2.0f" can be moved to wave eq bellow
+				acc += 2.0f * my_r / (my_r + yp1_r) * yp1_p;
+				acc += 2.0f * my_r / (my_r + zp1_r) * zp1_p;
+				acc += 2.0f * my_r / (my_r + xm1_r) * xm1_p;
+				acc += 2.0f * my_r / (my_r + ym1_r) * ym1_p;
+				acc += 2.0f * my_r / (my_r + zm1_r) * zm1_p;
+				
+				// myself influence - reflected wave from boundary (0 if same material: r_my = r_neigh)
+				acc += (xp1_r - my_r) / (xp1_r + my_r) * my_p;
+				acc += (yp1_r - my_r) / (yp1_r + my_r) * my_p;
+				acc += (zp1_r - my_r) / (zp1_r + my_r) * my_p;
+				acc += (xm1_r - my_r) / (xm1_r + my_r) * my_p;
+				acc += (ym1_r - my_r) / (ym1_r + my_r) * my_p;
+				acc += (zm1_r - my_r) / (zm1_r + my_r) * my_p;
+
+				// from now, for this element, p_tm1 will be p(t + 1); after finish of this simulation-step, buffers will be swapped by host code
+				p_tm1[my_idx] = dt * dt * my_c * my_c / (dx * dx) * (acc - 6.0f * my_p) + 2.0f * my_p - p_tm1[my_idx];
+			}
+		}
 	}
 }
 
@@ -320,7 +326,8 @@ kernel void object_ellipsoid (	global uchar * mat_arr, // field.buff_mat
 // counts number of transducer's elements (with MSB set) in each line along the x-axis
 kernel void tdcr_count_elements (	global const uchar * mat_arr, // field.buff_mat array
 									global uint * count_mat, // array of size { field.size.y, field.size.z }, drv elements count - output of kernel
-									uint x_size // field.size.x [elements]
+									uint x_size, // field.size.x [elements]
+									uchar wanted_mat // material # we looking for
 									) {
 	size_t my_y = get_global_id(0);
 	size_t my_z = get_global_id(1);
@@ -328,7 +335,7 @@ kernel void tdcr_count_elements (	global const uchar * mat_arr, // field.buff_ma
 
 	uint counter = 0;
 	for( uint my_x = 0; my_x < x_size; my_x++ ) {
-		if( mat_arr[INDEX3D( my_x, my_y, my_z )] & 0x80 )
+		if( mat_arr[INDEX3D( my_x, my_y, my_z )] == wanted_mat )
 			counter++; // MSB is set, inc counter
 	}
 
@@ -342,7 +349,8 @@ kernel void tdcr_collect_elements (	global const uchar * mat_arr, // field.buff_
 									global const ulong * psum, // output of prefix sum kernels { field.size.y, filed.size.z }
 									global uint * elements, // array of element's coordinates, format: { x0, x1 ... xn, y1 .. yn, z1 .. zn } - output of kernel
 									uint x_size, // field.size.x [elements]
-									ulong no_elements // total number of transducer's elements ( = psum[last])
+									ulong no_elements, // total number of transducer's elements ( = psum[last])
+									uchar wanted_mat // material # we looking for
 									) {
 	size_t my_y = get_global_id(0);
 	size_t my_z = get_global_id(1);
@@ -354,7 +362,7 @@ kernel void tdcr_collect_elements (	global const uchar * mat_arr, // field.buff_
 		offset = psum[my_y + my_z * y_size - 1];
 
 	for( uint my_x = 0; my_x < x_size; my_x++ ) {
-		if( mat_arr[INDEX3D( my_x, my_y, my_z )] & 0x80 ) {
+		if( mat_arr[INDEX3D( my_x, my_y, my_z )] == wanted_mat ) {
 			// store coordinates
 			elements[offset] = my_x;
 			elements[offset + no_elements] = (uint)my_y;

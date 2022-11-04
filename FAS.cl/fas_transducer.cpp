@@ -3,7 +3,7 @@
 
 using namespace fas;
 
-void transducer::CollectElements() {
+void transducer::CollectElements(uint8_t my_idx) {
     
     // TODO: try-catch, check algorithm & comment well
 
@@ -15,6 +15,7 @@ void transducer::CollectElements() {
     f->d->tdcr_count_elements_kernel.setArg(0, f->buff_mat);
     f->d->tdcr_count_elements_kernel.setArg(1, buff_count);
     f->d->tdcr_count_elements_kernel.setArg(2, f->size.x);
+    f->d->tdcr_count_elements_kernel.setArg(3, my_idx);
     f->cl_queue.enqueueNDRangeKernel(f->d->tdcr_count_elements_kernel, { 0,0 }, { f->size.y, f->size.z });
     f->cl_queue.enqueueBarrierWithWaitList();
 
@@ -62,12 +63,16 @@ void transducer::CollectElements() {
     f->cl_queue.enqueueUnmapMemObject(buff_tmp_last_col, tmp_last_col_arr);
     f->cl_queue.enqueueBarrierWithWaitList();
     // allocate memory on device
+    if(num_elements == 0) {
+        throw std::runtime_error("fas::driver::CollectElements(): Driver has zero elements, please remove it.");
+    }
     buff_elements = std::move(cl::Buffer( f->d->cl_context, CL_MEM_READ_WRITE, sizeof(uint32_t) * 3 * num_elements ));
     f->d->tdcr_collect_elements_kernel.setArg(0, f->buff_mat);
     f->d->tdcr_collect_elements_kernel.setArg(1, buff_psum);
     f->d->tdcr_collect_elements_kernel.setArg(2, buff_elements);
     f->d->tdcr_collect_elements_kernel.setArg(3, f->size.x);
     f->d->tdcr_collect_elements_kernel.setArg(4, static_cast<uint64_t>(num_elements));
+    f->d->tdcr_collect_elements_kernel.setArg(5, my_idx);
     f->cl_queue.enqueueNDRangeKernel(f->d->tdcr_collect_elements_kernel, { 0,0 }, { f->size.y,f->size.z });
     f->cl_queue.enqueueBarrierWithWaitList();
     // now all element's coordinates are stored in buff_elements
