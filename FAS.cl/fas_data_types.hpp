@@ -249,14 +249,16 @@ namespace fas {
 	struct driver : transducer {
 		driver() {}
 		driver(field& f) : transducer(f) {}
+		data_t sig_samp_freq; ///< sampling frequency of \ref signal
+		std::vector<data_t> signal; ///< drive signal, sampled by \ref sig_samp_freq
 
 		/** \brief Sets pressure in each element of transducer to value of \b signal
 		 *
 		 * Coordinates of elements must be already initialized by \ref CollectElements()
 		 * Non blocking, all drivers can be launched simultaneously, but before continue to next simulation step, \b f->Finish() must be called
-		 * \param signal immediate value of signal
+		 * \param time simulation time ( = dt * step#)
 		 **/
-		void Drive(data_t signal);
+		void Drive(data_t time);
 	};
 
 	/**

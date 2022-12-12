@@ -102,15 +102,24 @@ std::vector<uint32_t> transducer::GetElementsCoords() {
     return std::move(rv);
 }
 
-void driver::Drive(data_t signal) {
+void driver::Drive(data_t time) {
     try {
+        // calculate immediate value of drive-signal
+        data_t sample;
+        size_t sample_nr = time * sig_samp_freq;
+        if(sample_nr >= signal.size()) {
+            sample = 0; // no driving signal
+        } else {
+            sample = signal[sample_nr];
+        }
+        // drive
         if (f->p_buff == 0) {
             f->d->drive_kernel.setArg(0, f->buff_A);
         }
         else {
             f->d->drive_kernel.setArg(0, f->buff_B);
         }
-        f->d->drive_kernel.setArg(1, signal);
+        f->d->drive_kernel.setArg(1, sample);
         f->d->drive_kernel.setArg(2, buff_elements);
         f->d->drive_kernel.setArg(3, f->size.x);
         f->d->drive_kernel.setArg(4, f->size.y);
